@@ -5,6 +5,7 @@
 Este repositorio se trata sobre la prueba tecnica que recibí para poder trabajar como Backend Developer en Bloomingtec.mx, los requisitos fueron los siguientes:
 
 - Tenologías: Lenguaje o Framework, en mi caso [Laravel](https://laravel.com/).
+- Bases de datos, para el guardado de la informacion, usé [MySQL](https://www.mysql.com/).
 - Realizar Operaciones mediante API tipo REST, POST, GET, PUT, DELETE, etc. 
 - Autenticación basica. Utilicé [JWT Auth](https://www.jwt.io/). Es método de autenticación de usuarios que utiliza un formato estándar JSON Web Token.
 - Manejo de errores. Las respuestas de las peticiones se manejan a través de la clase [`Illuminate\Http\Client\Response`](https://api.laravel.com/docs/12.x/Illuminate/Http/Client/Response.html).
