@@ -1,4 +1,4 @@
-<p align="center"><a href="https://bloomingtec.mx" target="_blank"><img src="https://bloomingtec.mx/assets/img/im/Icono_Blooming_Tec-01.png" width="400" alt="Bloomingtec Logo"></a></p>
+<p align="center"><a href="https://bloomingtec.mx" target="_blank"><img src="https://bloomingtec.mx/assets/img/im/Icono_Blooming_Tec-01.png" width="200" alt="Bloomingtec Logo"></a></p>
 
 ## Bloomingtec TODO App
 
