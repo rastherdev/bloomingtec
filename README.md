@@ -23,6 +23,7 @@ Este repositorio contiene la solución de una prueba técnica para Backend Devel
 
 Variables clave en `.env` ya configuradas: `DB_CONNECTION`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`. Aún pendiente agregar `JWT_SECRET` cuando se integre JWT.
 
+## Instalación
 
 ### 1. Clonar y dependencias
 ```bash
