@@ -2,16 +2,19 @@
 
 ## Bloomingtec TODO App
 
-Este repositorio se trata sobre la prueba tecnica que recibí para poder trabajar como Backend Developer en Bloomingtec.mx, los requisitos fueron los siguientes:
+Este repositorio contiene la solución de una prueba técnica para Backend Developer (Laravel). La aplicación expone una API REST para gestionar usuarios y tareas (TODOs) con autenticación mediante JWT.
 
-- Tenologías: Lenguaje o Framework, en mi caso [Laravel](https://laravel.com/).
-- Bases de datos, para el guardado de la informacion, usé [MySQL](https://www.mysql.com/).
-- Realizar Operaciones mediante API tipo REST, POST, GET, PUT, DELETE, etc. 
-- Autenticación basica. Utilicé [JWT Auth](https://www.jwt.io/). Es método de autenticación de usuarios que utiliza un formato estándar JSON Web Token.
-- Manejo de errores. Las respuestas de las peticiones se manejan a través de la clase [`Illuminate\Http\Client\Response`](https://api.laravel.com/docs/12.x/Illuminate/Http/Client/Response.html).
-- Documentacion. En el mismo archivo README.MD, se encontrará la explicación del uso y funcionamiento general de la app.
-- Pruebas unitarias. Casi al final, incluyo pruebas unitarias para validar el correcto funcionamiento de la API.
-- Extra. Utilicé [Laravel Blueprint](https://blueprint.laravelshift.com/) para acelerar el desarrollo, esta herramienta automatiza la generación de múltiples componentes de una aplicación, como modelos, controladores, migraciones, factories y más, a partir de una única definición en formato YAML.
+### Resumen de requisitos implementados
+- Framework: [Laravel](https://laravel.com/)
+- Base de datos: [MySQL/MariaDB](https://www.mysql.com/) (driver configurable)
+- API REST: Endpoints CRUD para Tasks y operaciones básicas sobre Users
+- Autenticación: JWT (guard `api` con driver `jwt`)
+- Manejo de estados y borrado lógico (Soft Deletes) en `users` y `tasks`
+- Manejo de errores: Respuestas JSON estandarizadas usando códigos de estado de `Symfony\Component\HttpFoundation\Response`
+- Generación acelerada: [Laravel Blueprint](https://blueprint.laravelshift.com/)
+- Validación: Form Requests generadas y adaptadas
+- Pruebas: Planificadas (pendientes de integración completa con JWT)
+- Documentación: Este README estructurado por secciones (`##`)
 
 ## Requisitos
 - PHP >= 8.4
@@ -28,3 +31,173 @@ Resumen de pasos ejecutados hasta ahora:
 3. Definir el `SESSION_DRIVER=file` (API stateless, JWT pendiente).
 4. Definir el modelo y controladores con Blueprint en `draft.yaml` y ejecutar `php artisan blueprint:build`.
 5. Limpiar migraciones por defecto y ejecutar `php artisan migrate:fresh` para crear tablas `users` y `tasks`.
+6. Instalar JWT (`composer require tymon/jwt-auth`) y publicar config (`php artisan vendor:publish --provider="Tymon\\JWTAuth\\Providers\\LaravelServiceProvider"`).
+7. Generar clave JWT: `php artisan jwt:secret` (crea `JWT_SECRET` en `.env`).
+8. Probar endpoints autenticados usando el token devuelto en login/register.
+
+---
+
+## Índice
+1. Stack Tecnológico
+2. Arquitectura y Generación (Blueprint)
+3. Modelos y Campos
+4. Autenticación JWT (Flujo)
+5. Endpoints
+6. Validación y Manejo de Errores
+7. Flujo de Uso Rápido (Ejemplos cURL)
+8. Variables de Entorno Clave
+9. Comandos Útiles (Artisan / QA)
+10. Plan de Pruebas (Pendiente)
+11. Futuras Mejoras
+
+---
+
+## 1. Stack Tecnológico
+- PHP 8.2+
+- Laravel 12
+- MySQL / MariaDB (adaptable a SQLite para tests)
+- JWT Auth (paquete `tymon/jwt-auth`)
+- Blueprint para scaffolding inicial
+- Pest (framework de pruebas) + PHPUnit
+
+## 2. Arquitectura y Generación (Blueprint)
+Se definió un `draft.yaml` con:
+- Modelo `User` (campos de perfil + autenticación + soft deletes)
+- Modelo `Task` (asociada a `User`, estado, fechas, soft deletes)
+- Controladores API (`AuthController`, `UserController`, `TaskController`)
+- Requests de validación y pruebas base
+
+La generación inicial vía `php artisan blueprint:build` creó migraciones, modelos, factories y controladores que luego se ajustaron manualmente para:
+- Integrar JWT (guard api)
+- Respuestas JSON consistentes
+- Reemplazar códigos numéricos mágicos por constantes HTTP
+- Añadir verificación de propiedad en tareas (autorización básica)
+
+## 3. Modelos y Campos
+### User
+Campos clave: `first_name`, `last_name`, `email` (único), `slug` (identificador URL), `phone`, `password` (hasheado automáticamente), soft deletes (`deleted_at`). Relación: `hasMany(Task)`.
+
+### Task
+Campos: `user_id`, `title`, `description` (nullable), `start_date`, `end_date` (nullable), `status` (enum: `incomplete|complete`), soft deletes. Relación: `belongsTo(User)`.
+
+Indices relevantes: email único; `user_id` index + foreign key; (mejorable: índice compuesto posible en futuro para slug único).
+
+## 4. Autenticación JWT (Flujo)
+1. Registro (`POST /api/auth/register`) crea usuario y devuelve token.
+2. Login (`POST /api/auth/login`) valida credenciales y devuelve token JWT.
+3. Cliente envía `Authorization: Bearer <token>` en cada petición protegida.
+4. Middleware `auth:api` valida firma, expiración y blacklist.
+5. Refresh (`POST /api/auth/refresh`) entrega nuevo token (rotación segura).
+6. Logout (`POST /api/auth/logout`) invalida el token (se marca en blacklist si está habilitada).
+7. Endpoint `me` retorna el usuario autenticado.
+
+TTL y refresh configurables vía `.env` (`JWT_TTL`, `JWT_REFRESH_TTL`).
+
+## 5. Endpoints
+Base: `/api`
+
+### Auth
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| POST | /auth/register | Registrar usuario y devolver token |
+| POST | /auth/login | Autenticación y emisión de token |
+| POST | /auth/logout | Invalida token actual (protegido) |
+| POST | /auth/refresh | Refresca token (protegido) |
+| GET | /auth/me | Datos del usuario autenticado |
+
+### Users (protegidos)
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| POST | /users | Crear usuario (uso administrativo) |
+| PUT | /users/{user} | Actualizar usuario |
+| DELETE | /users/{user} | Borrado lógico |
+
+### Tasks (protegidos)
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET | /tasks | Listar tareas del usuario autenticado |
+| POST | /tasks | Crear tarea |
+| GET | /tasks/{task} | Ver tarea propia |
+| PUT | /tasks/{task} | Actualizar tarea propia |
+| DELETE | /tasks/{task} | Eliminar (soft delete) |
+
+## 6. Validación y Manejo de Errores
+- Form Requests aseguran estructura y tipos.
+- Respuestas de error usan códigos HTTP estandar (`Response::HTTP_UNPROCESSABLE_ENTITY`, etc.).
+- Estructura actual (ejemplo): `{ "message": "Invalid credentials" }`.
+- Autorización de recursos de tareas: chequeo explícito de propiedad (puede migrar a Policies).
+- Pendiente: formato uniforme con envoltura (`success`, `data`, `errors`, `meta`).
+
+## 7. Flujo de Uso Rápido (Ejemplos cURL)
+```bash
+# Registro
+curl -X POST http://localhost:8000/api/auth/register \
+	-H "Content-Type: application/json" \
+	-d '{"first_name":"John","last_name":"Doe","email":"john@example.com","password":"secret123","password_confirmation":"secret123"}'
+
+# Login
+curl -X POST http://localhost:8000/api/auth/login \
+	-H "Content-Type: application/json" \
+	-d '{"email":"john@example.com","password":"secret123"}'
+
+# Usar TOKEN (exportar en shell)
+export TOKEN=eyJ0eXAiOiJKV1QiLCJhbGciOi... # token devuelto
+
+# Crear Task
+curl -X POST http://localhost:8000/api/tasks \
+	-H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+	-d '{"title":"Primera tarea","description":"Demo","start_date":"2025-08-26"}'
+
+# Listar Tasks
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/api/tasks
+
+# Refresh Token
+curl -X POST http://localhost:8000/api/auth/refresh -H "Authorization: Bearer $TOKEN"
+
+# Logout
+curl -X POST http://localhost:8000/api/auth/logout -H "Authorization: Bearer $TOKEN"
+```
+
+## 8. Variables de Entorno Clave
+| Variable | Descripción |
+|----------|-------------|
+| APP_ENV / APP_DEBUG | Entorno y modo debug |
+| DB_CONNECTION / DB_* | Config DB |
+| JWT_SECRET | Clave firma tokens (generada) |
+| JWT_TTL | Minutos de vigencia del token (ej. 60) |
+| JWT_REFRESH_TTL | Ventana total refresh (ej. 20160 = 14 días) |
+| JWT_BLACKLIST_ENABLED | Controla blacklist (true recomendado) |
+
+## 9. Comandos Útiles
+```bash
+php artisan migrate:fresh --seed      # Recrear base
+php artisan jwt:secret                # Regenerar clave JWT
+php artisan route:list                # Ver rutas
+php artisan tinker                    # Consola interactiva
+php artisan test                      # (Pruebas, luego de implementarlas)
+```
+
+## 10. Plan de Pruebas (Pendiente)
+Cobertura prevista:
+1. Auth: registro, login, refresh, logout, me.
+2. Tasks: CRUD completo + restricción acceso cruzado.
+3. Validaciones: campos obligatorios y formatos inválidos.
+4. Soft deletes: visibilidad tras borrado.
+5. Seguridad: acceso sin token / token expirado / token revocado.
+
+## 11. Futuras Mejoras
+- Políticas (Policies) para tareas y usuarios.
+- Estandarizar payload JSON (`data`, `errors`, `meta`).
+- Rate limiting específico para login (throttle).
+- Slug único robusto y actualización condicional.
+- Filters y paginación en listado de tasks (`status`, rango de fechas).
+- WebSockets / Broadcasting para eventos de tareas (opcional).
+- Auditoría de acciones (logs estructurados / tabla de activity).
+- Tests completos (unit + feature) con coverage.
+- Dockerización (compose para local dev).
+- Documentación OpenAPI/Swagger.
+
+---
+
+Si deseas extender o probar nuevas funcionalidades, puedes partir de las secciones anteriores. Las pruebas se integrarán al final siguiendo el plan descrito.
+

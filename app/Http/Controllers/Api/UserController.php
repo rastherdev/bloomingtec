@@ -6,29 +6,26 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\UserStoreRequest;
 use App\Http\Requests\Api\UserUpdateRequest;
 use App\Models\User;
-use Illuminate\Http\Request;
-use Illuminate\Http\Response;
+use Illuminate\Http\JsonResponse;
+use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 class UserController extends Controller
 {
-    public function store(UserStoreRequest $request): Response
+    public function store(UserStoreRequest $request): JsonResponse
     {
         $user = User::create($request->validated());
-
-        return $user;
+    return response()->json($user, HttpResponse::HTTP_CREATED);
     }
 
-    public function update(UserUpdateRequest $request, User $user): Response
+    public function update(UserUpdateRequest $request, User $user): JsonResponse
     {
         $user->update($request->validated());
-
-        return $user;
+        return response()->json($user);
     }
 
-    public function destroy(Request $request, User $user): Response
+    public function destroy(User $user): JsonResponse
     {
         $user->delete();
-
-        return response()->noContent();
+    return response()->json([], HttpResponse::HTTP_NO_CONTENT);
     }
 }
