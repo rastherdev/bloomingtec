@@ -8,10 +8,10 @@ Este repositorio contiene la solución de una prueba técnica para Backend Devel
 - Framework: [Laravel](https://laravel.com/)
 - Base de datos: [MySQL/MariaDB](https://www.mysql.com/)
 - API REST: Endpoints CRUD para Tasks y operaciones básicas sobre Users
-- Autenticación: JWT (guard `api` con driver `jwt`)
+- Autenticación: [JWT](https://github.com/tymondesigns/jwt-auth) teniendo en cuenta guard `api` con driver `jwt`.
 - Manejo de estados y borrado lógico (Soft Deletes) en `users` y `tasks`
 - Manejo de errores: Respuestas JSON estandarizadas usando códigos de estado de `Symfony\Component\HttpFoundation\Response`
-- Fast Coding: [Laravel Blueprint](https://blueprint.laravelshift.com/)
+- Fast Coding: Implementacion de scaffolding con [Laravel Blueprint](https://blueprint.laravelshift.com/)
 - Validación: Form Requests generadas y adaptadas
 - Pruebas: Utilizando Pest
 - Documentación: Este README estructurado por secciones (`##`)
@@ -21,7 +21,7 @@ Este repositorio contiene la solución de una prueba técnica para Backend Devel
 - Composer.
 - MySQL (o MariaDB) en ejecución.
 
-Variables clave en `.env` ya configuradas: `DB_CONNECTION`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`. Aún pendiente agregar `JWT_SECRET` cuando se integre JWT.
+Variables clave en `.env` a configurar: `DB_CONNECTION`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`.
 
 ## Instalación
 
@@ -34,13 +34,7 @@ composer install
 
 ### 2. Archivo de entorno
 ```bash
-cp .env.example .env
 Copy-Item .env.example .env
-```
-
-Generar clave de aplicación si falta:
-```bash
-php artisan key:generate
 ```
 
 ### 3. Configurar `.env`
@@ -49,8 +43,8 @@ DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_DATABASE=bloomingtec
-DB_USERNAME=usuario
-DB_PASSWORD=secret
+DB_USERNAME=<user>
+DB_PASSWORD=<password>
 SESSION_DRIVER=file
 ```
 
@@ -77,11 +71,12 @@ php artisan jwt:secret
 6. Validación y Manejo de Errores
 7. Flujo de Uso Rápido (Ejemplos cURL)
 8. Variables de Entorno Clave
+9. Testing (Pruebas unitarias)
 
 ---
 
 ## 1. Stack Tecnológico
-- PHP 8.2+
+- PHP 8.4+
 - Laravel 12
 - MySQL / MariaDB (adaptable a SQLite para tests)
 - JWT Auth (paquete `tymon/jwt-auth`)
@@ -95,7 +90,7 @@ Se definió un `draft.yaml` con:
 - Controladores API (`AuthController`, `UserController`, `TaskController`)
 - Requests de validación y pruebas base
 
-La generación inicial vía `php artisan blueprint:build` creó migraciones, modelos, factories y controladores que luego se ajustaron manualmente para:
+La generación inicial vía `php artisan blueprint:build` creó migraciones, modelos, factories y controladores que luego ajusté.
 - Integrar JWT (guard api)
 - Respuestas JSON consistentes
 - Reemplazar códigos numéricos por constantes HTTP para mejor entendimiento
@@ -150,41 +145,75 @@ Base: `/api`
 | DELETE | /tasks/{task} | Eliminar (soft delete) |
 
 ## 6. Validación y Manejo de Errores
-- Form Requests aseguran estructura y tipos.
+- Form Requests que sirven para asegurar estructura y tipos.
 - Respuestas de error usan códigos HTTP estandar (`Response::HTTP_UNPROCESSABLE_ENTITY`, etc.).
 - Estructura actual (ejemplo): `{ "message": "Invalid credentials" }`.
-- Autorización de recursos de tareas: chequeo explícito de propiedad (puede migrar a Policies).
-- Pendiente: formato uniforme con envoltura (`success`, `data`, `errors`, `meta`).
 
-## 7. Flujo de Uso Rápido (Ejemplos cURL)
-```bash
-# Registro
-curl -X POST http://localhost:8000/api/auth/register \
-	-H "Content-Type: application/json" \
-	-d '{"first_name":"John","last_name":"Doe","email":"john@example.com","password":"secret123","password_confirmation":"secret123"}'
+## 7. Flujo de Uso Rápido (Ejemplos Postman)
 
-# Login
-curl -X POST http://localhost:8000/api/auth/login \
-	-H "Content-Type: application/json" \
-	-d '{"email":"john@example.com","password":"secret123"}'
+A continuación se describe cómo probar la API usando [Postman](https://www.postman.com/):
 
-# Usar TOKEN (exportar en shell)
-export TOKEN=eyJ0eXAiOiJKV1QiLCJhbGciOi... # token devuelto
+1. **Registro de usuario**
+	- Método: `POST`
+	- URL: `http://localhost:8000/api/auth/register`
+	- Body: `raw` y `JSON`:
+	  ```json
+	  {
+		 "first_name": "John",
+		 "last_name": "Doe",
+		 "email": "john@example.com",
+		 "password": "secret123",
+		 "password_confirmation": "secret123"
+	  }
+	  ```
 
-# Crear Task
-curl -X POST http://localhost:8000/api/tasks \
-	-H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-	-d '{"title":"Primera tarea","description":"Demo","start_date":"2025-08-26"}'
+2. **Login**
+	- Método: `POST`
+	- URL: `http://localhost:8000/api/auth/login`
+	- Body: `raw` y `JSON`:
+	  ```json
+	  {
+		 "email": "john@example.com",
+		 "password": "secret123"
+	  }
+	  ```
+	- El token JWT se mostrará en la respuesta.
 
-# Listar Tasks
-curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/api/tasks
+3. **Usar el TOKEN**
+	- Copiar el valor del token JWT recibido.
+	- En las siguientes peticiones, `Headers`:
+	  ```
+	  Key: Authorization
+	  Value: Bearer <TOKEN>
+	  ```
 
-# Refresh Token
-curl -X POST http://localhost:8000/api/auth/refresh -H "Authorization: Bearer $TOKEN"
+4. **Crear Task**
+	- Método: `POST`
+	- URL: `http://localhost:8000/api/tasks`
+	- Headers: Incluye el header `Authorization` como arriba.
+	- Body: `raw` y `JSON`:
+	  ```json
+	  {
+		 "title": "Primera tarea",
+		 "description": "Demo",
+		 "start_date": "2025-08-26"
+	  }
+	  ```
 
-# Logout
-curl -X POST http://localhost:8000/api/auth/logout -H "Authorization: Bearer $TOKEN"
-```
+5. **Listar Tasks**
+	- Método: `GET`
+	- URL: `http://localhost:8000/api/tasks`
+	- Headers: `Authorization: Bearer <TOKEN>`
+
+6. **Refresh Token**
+	- Método: `POST`
+	- URL: `http://localhost:8000/api/auth/refresh`
+	- Headers: `Authorization: Bearer <TOKEN>`
+
+7. **Logout**
+	- Método: `POST`
+	- URL: `http://localhost:8000/api/auth/logout`
+	- Headers: `Authorization: Bearer <TOKEN>`
 
 ## 8. Variables de Entorno Clave
 | Variable | Descripción |
@@ -192,6 +221,54 @@ curl -X POST http://localhost:8000/api/auth/logout -H "Authorization: Bearer $TO
 | APP_ENV / APP_DEBUG | Entorno y modo debug |
 | DB_CONNECTION / DB_* | Config DB |
 | JWT_SECRET | Clave firma tokens (generada) |
-| JWT_TTL | Minutos de vigencia del token (ej. 60) |
-| JWT_REFRESH_TTL | Ventana total refresh (ej. 20160 = 14 días) |
-| JWT_BLACKLIST_ENABLED | Controla blacklist (true recomendado) |
+
+
+## 9. Testing (Pruebas Unitarias)
+
+Usé pruebas de tipo Feature con Pest para validar el flujo de la API.
+
+### Suites y Casos Cubiertos
+**AuthControllerTest**
+- register devuelve token y usuario (201)
+- register con email duplicado retorna 422 (valida regla unique)
+- login exitoso y me (autenticación + endpoint protegido)
+- me sin token retorna no autorizado (401)
+- refresh y logout (rotación + invalidación de token)
+
+**TaskControllerTest**
+- index retorna solo tareas del usuario autenticado (scoping por usuario)
+- store crea tarea para usuario autenticado (201 y propiedad automática)
+- show prohibido para otro usuario (403 diferenciando propiedad)
+- show no encontrado retorna 404 (ID inexistente)
+- show id inválido retorna 422 (id no numérico: letras/símbolos)
+- update modifica tarea (PUT con validaciones)
+- destroy elimina lógicamente (borrado lógico)
+
+**UserControllerTest**
+- store crea usuario (201 + slug autogenerado)
+- update modifica usuario (email único ignorando el mismo id)
+- destroy elimina lógicamente usuario
+
+**Ejemplo de Tests (plantilla)**
+- Unit: assert true
+- Feature: endpoint /api/test responde 200
+
+### Estructura de Respuesta Validada
+Dentro, se verifican estructuras mínimas (`assertJsonStructure`) en autenticación y paths específicos (`assertJsonPath`) para cambios puntuales (`title`, `first_name`, etc.).
+
+### Errores y Códigos Cubiertos
+- 200/201/204: Operaciones exitosas
+- 401: Falta/invalid token
+- 403: Recurso existente pero sin propiedad
+- 404: Recurso inexistente
+- 422: Validación (campos faltantes, email duplicado, id inválido, estado inválido)
+
+### Ejecución
+```
+php artisan test
+```
+Filtrar por clase o caso:
+```
+php artisan test --filter=TaskControllerTest
+php artisan test --filter=AuthControllerTest::test_login_success_and_me
+```
