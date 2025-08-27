@@ -46,9 +46,6 @@ Resumen de pasos ejecutados hasta ahora:
 6. Validación y Manejo de Errores
 7. Flujo de Uso Rápido (Ejemplos cURL)
 8. Variables de Entorno Clave
-9. Comandos Útiles (Artisan / QA)
-10. Plan de Pruebas (Pendiente)
-11. Futuras Mejoras
 
 ---
 
@@ -70,7 +67,7 @@ Se definió un `draft.yaml` con:
 La generación inicial vía `php artisan blueprint:build` creó migraciones, modelos, factories y controladores que luego se ajustaron manualmente para:
 - Integrar JWT (guard api)
 - Respuestas JSON consistentes
-- Reemplazar códigos numéricos mágicos por constantes HTTP
+- Reemplazar códigos numéricos por constantes HTTP para mejor entendimiento
 - Añadir verificación de propiedad en tareas (autorización básica)
 
 ## 3. Modelos y Campos
@@ -80,13 +77,13 @@ Campos clave: `first_name`, `last_name`, `email` (único), `slug` (identificador
 ### Task
 Campos: `user_id`, `title`, `description` (nullable), `start_date`, `end_date` (nullable), `status` (enum: `incomplete|complete`), soft deletes. Relación: `belongsTo(User)`.
 
-Indices relevantes: email único; `user_id` index + foreign key; (mejorable: índice compuesto posible en futuro para slug único).
+Indices relevantes: email único; `user_id` index + foreign key.
 
 ## 4. Autenticación JWT (Flujo)
 1. Registro (`POST /api/auth/register`) crea usuario y devuelve token.
 2. Login (`POST /api/auth/login`) valida credenciales y devuelve token JWT.
 3. Cliente envía `Authorization: Bearer <token>` en cada petición protegida.
-4. Middleware `auth:api` valida firma, expiración y blacklist.
+4. Middleware `auth:api` valida firma, establece una expiración y blacklist.
 5. Refresh (`POST /api/auth/refresh`) entrega nuevo token (rotación segura).
 6. Logout (`POST /api/auth/logout`) invalida el token (se marca en blacklist si está habilitada).
 7. Endpoint `me` retorna el usuario autenticado.
@@ -167,37 +164,3 @@ curl -X POST http://localhost:8000/api/auth/logout -H "Authorization: Bearer $TO
 | JWT_TTL | Minutos de vigencia del token (ej. 60) |
 | JWT_REFRESH_TTL | Ventana total refresh (ej. 20160 = 14 días) |
 | JWT_BLACKLIST_ENABLED | Controla blacklist (true recomendado) |
-
-## 9. Comandos Útiles
-```bash
-php artisan migrate:fresh --seed      # Recrear base
-php artisan jwt:secret                # Regenerar clave JWT
-php artisan route:list                # Ver rutas
-php artisan tinker                    # Consola interactiva
-php artisan test                      # (Pruebas, luego de implementarlas)
-```
-
-## 10. Plan de Pruebas (Pendiente)
-Cobertura prevista:
-1. Auth: registro, login, refresh, logout, me.
-2. Tasks: CRUD completo + restricción acceso cruzado.
-3. Validaciones: campos obligatorios y formatos inválidos.
-4. Soft deletes: visibilidad tras borrado.
-5. Seguridad: acceso sin token / token expirado / token revocado.
-
-## 11. Futuras Mejoras
-- Políticas (Policies) para tareas y usuarios.
-- Estandarizar payload JSON (`data`, `errors`, `meta`).
-- Rate limiting específico para login (throttle).
-- Slug único robusto y actualización condicional.
-- Filters y paginación en listado de tasks (`status`, rango de fechas).
-- WebSockets / Broadcasting para eventos de tareas (opcional).
-- Auditoría de acciones (logs estructurados / tabla de activity).
-- Tests completos (unit + feature) con coverage.
-- Dockerización (compose para local dev).
-- Documentación OpenAPI/Swagger.
-
----
-
-Si deseas extender o probar nuevas funcionalidades, puedes partir de las secciones anteriores. Las pruebas se integrarán al final siguiendo el plan descrito.
-
