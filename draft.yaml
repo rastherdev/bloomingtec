@@ -1,0 +1,38 @@
+models:
+  User:
+    first_name: string:100
+    last_name: string:100
+    email: string:150 unique
+    password: string:255
+    slug: string:160 unique
+    phone: string:30 nullable
+    relations:
+      hasMany: Task
+    softDeletes
+    timestamps
+
+  Task:
+    user_id: id foreign
+    title: string:150
+    description: text nullable
+    start_date: date nullable
+    end_date: date nullable
+    status: enum:incomplete,complete default:incomplete
+    softDeletes
+    timestamps
+
+controllers:
+  Api/Task:
+    resource: index, show, store, update, destroy
+
+  Api/User:
+    store
+    update
+    destroy
+
+  Api/Auth:
+    register
+    login
+    logout
+    me
+    refresh
