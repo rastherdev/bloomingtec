@@ -27,6 +27,19 @@ class AuthControllerTest extends TestCase
         $this->assertDatabaseHas('users', ['email' => 'john@example.com']);
     }
 
+    public function test_register_duplicate_email_returns_422(): void
+    {
+        User::factory()->create(['email' => 'john@example.com']);
+        $res = $this->postJson('/api/auth/register', [
+            'first_name' => 'John',
+            'last_name' => 'Doe',
+            'email' => 'john@example.com',
+            'password' => 'secret123',
+        ]);
+        $res->assertStatus(Http::HTTP_UNPROCESSABLE_ENTITY)
+            ->assertJsonValidationErrors(['email']);
+    }
+
     public function test_login_success_and_me(): void
     {
         $user = User::factory()->create(['password' => bcrypt('secret123')]);
