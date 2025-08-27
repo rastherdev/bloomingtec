@@ -22,7 +22,8 @@ class UserUpdateRequest extends FormRequest
         return [
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:100'],
-            'email' => ['required', 'email', 'max:150', 'unique:users,email'],
+            // Ignore current user id for unique email
+            'email' => ['required', 'email', 'max:150', 'unique:users,email,' . $this->route('user')->id],
             'phone' => ['nullable', 'string', 'max:30'],
         ];
     }

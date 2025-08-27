@@ -3,83 +3,60 @@
 namespace Tests\Feature\Http\Controllers\Api;
 
 use App\Models\User;
+use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Foundation\Testing\WithFaker;
-use JMac\Testing\Traits\AdditionalAssertions;
-use PHPUnit\Framework\Attributes\Test;
+use Symfony\Component\HttpFoundation\Response as Http;
 use Tests\TestCase;
 
-/**
- * @see \App\Http\Controllers\Api\AuthController
- */
-final class AuthControllerTest extends TestCase
+class AuthControllerTest extends TestCase
 {
-    use AdditionalAssertions, RefreshDatabase, WithFaker;
+    use RefreshDatabase;
 
-    #[Test]
-    public function register_uses_form_request_validation(): void
+    public function test_register_returns_token_and_user(): void
     {
-        $this->assertActionUsesFormRequest(
-            \App\Http\Controllers\Api\AuthController::class,
-            'register',
-            \App\Http\Requests\Api\AuthRegisterRequest::class
-        );
+        $res = $this->postJson('/api/auth/register', [
+            'first_name' => 'John',
+            'last_name' => 'Doe',
+            'email' => 'john@example.com',
+            'password' => 'secret123',
+            'password_confirmation' => 'secret123',
+        ]);
+
+        $res->assertStatus(Http::HTTP_CREATED)
+            ->assertJsonStructure(['access_token','token_type','expires_in','user'=>['id','email']]);
+        $this->assertDatabaseHas('users', ['email' => 'john@example.com']);
     }
 
-    #[Test]
-    public function register_saves_and_responds_with(): void
+    public function test_login_success_and_me(): void
     {
-        $response = $this->get(route('auths.register'));
+        $user = User::factory()->create(['password' => bcrypt('secret123')]);
+        $login = $this->postJson('/api/auth/login', [
+            'email' => $user->email,
+            'password' => 'secret123',
+        ]);
+        $login->assertOk()->assertJsonStructure(['access_token']);
+        $token = $login->json('access_token');
 
-        $response->assertOk();
-        $response->assertJson($user);
-
-        $this->assertDatabaseHas(users, [ /* ... */ ]);
+        $me = $this->getJson('/api/auth/me', ['Authorization' => 'Bearer '.$token]);
+        $me->assertOk()->assertJsonPath('id', $user->id);
     }
 
-
-    #[Test]
-    public function login_uses_form_request_validation(): void
+    public function test_me_without_token_is_unauthorized(): void
     {
-        $this->assertActionUsesFormRequest(
-            \App\Http\Controllers\Api\AuthController::class,
-            'login',
-            \App\Http\Requests\Api\AuthLoginRequest::class
-        );
+        $this->getJson('/api/auth/me')->assertStatus(Http::HTTP_UNAUTHORIZED);
     }
 
-    #[Test]
-    public function login_responds_with(): void
+    public function test_refresh_and_logout(): void
     {
-        $response = $this->get(route('auths.login'));
+    /** @var User $user */
+    $user = User::factory()->create();
+    $token = JWTAuth::fromUser($user);
 
-        $response->assertOk();
-    }
+        $refresh = $this->postJson('/api/auth/refresh', [], ['Authorization' => 'Bearer '.$token]);
+        $refresh->assertOk()->assertJsonStructure(['access_token']);
+        $newToken = $refresh->json('access_token');
 
-
-    #[Test]
-    public function logout_responds_with(): void
-    {
-        $response = $this->get(route('auths.logout'));
-
-        $response->assertNoContent();
-    }
-
-
-    #[Test]
-    public function me_responds_with(): void
-    {
-        $response = $this->get(route('auths.me'));
-
-        $response->assertOk();
-    }
-
-
-    #[Test]
-    public function refresh_responds_with(): void
-    {
-        $response = $this->get(route('auths.refresh'));
-
-        $response->assertOk();
+        $logout = $this->postJson('/api/auth/logout', [], ['Authorization' => 'Bearer '.$newToken]);
+        $logout->assertStatus(Http::HTTP_OK)->assertJsonPath('message', 'Logged out');
     }
 }

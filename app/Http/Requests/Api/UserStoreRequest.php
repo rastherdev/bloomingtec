@@ -23,7 +23,8 @@ class UserStoreRequest extends FormRequest
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:100'],
             'email' => ['required', 'email', 'max:150', 'unique:users,email'],
-            'password' => ['required', 'password', 'max:255'],
+            // Use basic rules; can swap for Password::defaults() if desired
+            'password' => ['required', 'string', 'min:6', 'max:255'],
         ];
     }
 }

@@ -36,7 +36,9 @@ class TaskController extends Controller
     public function update(TaskUpdateRequest $request, Task $task): JsonResponse
     {
         $this->authorizeTask($task);
-        $task->update($request->validated());
+    $data = $request->validated();
+    unset($data['user_id']); // prevent ownership changes
+    $task->update($data);
         return response()->json($task);
     }
 

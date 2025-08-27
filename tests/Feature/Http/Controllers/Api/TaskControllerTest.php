@@ -4,125 +4,74 @@ namespace Tests\Feature\Http\Controllers\Api;
 
 use App\Models\Task;
 use App\Models\User;
+use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Foundation\Testing\WithFaker;
-use JMac\Testing\Traits\AdditionalAssertions;
-use PHPUnit\Framework\Attributes\Test;
+use Symfony\Component\HttpFoundation\Response as Http;
 use Tests\TestCase;
 
-/**
- * @see \App\Http\Controllers\Api\TaskController
- */
-final class TaskControllerTest extends TestCase
+class TaskControllerTest extends TestCase
 {
-    use AdditionalAssertions, RefreshDatabase, WithFaker;
+    use RefreshDatabase;
 
-    #[Test]
-    public function index_displays_view(): void
+    private function authHeaders(User $user): array
     {
-        $tasks = Task::factory()->count(3)->create();
-
-        $response = $this->get(route('tasks.index'));
-
-        $response->assertOk();
-        $response->assertViewIs('task.index');
-        $response->assertViewHas('tasks');
+    /** @var User $user */
+    $token = JWTAuth::fromUser($user);
+        return ['Authorization' => 'Bearer '.$token];
     }
 
-
-    #[Test]
-    public function store_uses_form_request_validation(): void
-    {
-        $this->assertActionUsesFormRequest(
-            \App\Http\Controllers\Api\TaskController::class,
-            'store',
-            \App\Http\Requests\Api\TaskStoreRequest::class
-        );
-    }
-
-    #[Test]
-    public function store_saves_and_redirects(): void
+    public function test_index_returns_only_authenticated_user_tasks(): void
     {
         $user = User::factory()->create();
-        $title = fake()->sentence(4);
-        $status = fake()->randomElement(/** enum_attributes **/);
+        $other = User::factory()->create();
+        Task::factory()->for($user)->count(2)->create();
+        Task::factory()->for($other)->count(3)->create();
 
-        $response = $this->post(route('tasks.store'), [
-            'user_id' => $user->id,
-            'title' => $title,
-            'status' => $status,
-        ]);
-
-        $tasks = Task::query()
-            ->where('user_id', $user->id)
-            ->where('title', $title)
-            ->where('status', $status)
-            ->get();
-        $this->assertCount(1, $tasks);
-        $task = $tasks->first();
-
-        $response->assertRedirect(route('tasks.index'));
-        $response->assertSessionHas('task.id', $task->id);
+        $res = $this->getJson('/api/tasks', $this->authHeaders($user));
+        $res->assertOk();
+        $this->assertCount(2, $res->json());
     }
 
-
-    #[Test]
-    public function show_displays_view(): void
+    public function test_store_creates_task_for_authenticated_user(): void
     {
-        $task = Task::factory()->create();
-
-        $response = $this->get(route('tasks.show', $task));
-
-        $response->assertOk();
-        $response->assertViewIs('task.show');
-        $response->assertViewHas('task');
-    }
-
-
-    #[Test]
-    public function update_uses_form_request_validation(): void
-    {
-        $this->assertActionUsesFormRequest(
-            \App\Http\Controllers\Api\TaskController::class,
-            'update',
-            \App\Http\Requests\Api\TaskUpdateRequest::class
-        );
-    }
-
-    #[Test]
-    public function update_redirects(): void
-    {
-        $task = Task::factory()->create();
         $user = User::factory()->create();
-        $title = fake()->sentence(4);
-        $status = fake()->randomElement(/** enum_attributes **/);
-
-        $response = $this->put(route('tasks.update', $task), [
-            'user_id' => $user->id,
-            'title' => $title,
-            'status' => $status,
-        ]);
-
-        $task->refresh();
-
-        $response->assertRedirect(route('tasks.index'));
-        $response->assertSessionHas('task.id', $task->id);
-
-        $this->assertEquals($user->id, $task->user_id);
-        $this->assertEquals($title, $task->title);
-        $this->assertEquals($status, $task->status);
+        $payload = [
+            'title' => 'Sample Task',
+            'start_date' => now()->toDateString(),
+            'status' => 'incomplete',
+        ];
+        $res = $this->postJson('/api/tasks', $payload, $this->authHeaders($user));
+        $res->assertStatus(Http::HTTP_CREATED)->assertJsonPath('title', 'Sample Task');
+        $this->assertDatabaseHas('tasks', ['title' => 'Sample Task', 'user_id' => $user->id]);
     }
 
-
-    #[Test]
-    public function destroy_deletes_and_redirects(): void
+    public function test_show_forbidden_for_other_user(): void
     {
-        $task = Task::factory()->create();
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $task = Task::factory()->for($owner)->create();
+        $this->getJson('/api/tasks/'.$task->id, $this->authHeaders($other))
+            ->assertStatus(Http::HTTP_FORBIDDEN);
+    }
 
-        $response = $this->delete(route('tasks.destroy', $task));
+    public function test_update_modifies_task(): void
+    {
+        $user = User::factory()->create();
+        $task = Task::factory()->for($user)->create(['title' => 'Old']);
+        $res = $this->putJson('/api/tasks/'.$task->id, [
+            'title' => 'New Title',
+            'status' => 'complete',
+        ], $this->authHeaders($user));
+        $res->assertOk()->assertJsonPath('title', 'New Title');
+        $this->assertDatabaseHas('tasks', ['id' => $task->id, 'title' => 'New Title', 'status' => 'complete']);
+    }
 
-        $response->assertRedirect(route('tasks.index'));
-
-        $this->assertSoftDeleted($task);
+    public function test_destroy_soft_deletes(): void
+    {
+        $user = User::factory()->create();
+        $task = Task::factory()->for($user)->create();
+        $this->deleteJson('/api/tasks/'.$task->id, [], $this->authHeaders($user))
+            ->assertStatus(Http::HTTP_NO_CONTENT);
+        $this->assertSoftDeleted('tasks', ['id' => $task->id]);
     }
 }

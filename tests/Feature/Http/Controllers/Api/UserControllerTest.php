@@ -3,105 +3,57 @@
 namespace Tests\Feature\Http\Controllers\Api;
 
 use App\Models\User;
+use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Foundation\Testing\WithFaker;
-use JMac\Testing\Traits\AdditionalAssertions;
-use PHPUnit\Framework\Attributes\Test;
+use Symfony\Component\HttpFoundation\Response as Http;
 use Tests\TestCase;
 
-/**
- * @see \App\Http\Controllers\Api\UserController
- */
-final class UserControllerTest extends TestCase
+class UserControllerTest extends TestCase
 {
-    use AdditionalAssertions, RefreshDatabase, WithFaker;
+    use RefreshDatabase;
 
-    #[Test]
-    public function store_uses_form_request_validation(): void
+    private function authHeaders(): array
     {
-        $this->assertActionUsesFormRequest(
-            \App\Http\Controllers\Api\UserController::class,
-            'store',
-            \App\Http\Requests\Api\UserStoreRequest::class
-        );
+    /** @var User $user */
+    $user = User::factory()->create();
+    $token = JWTAuth::fromUser($user);
+        return ['Authorization' => 'Bearer '.$token];
     }
 
-    #[Test]
-    public function store_saves_and_responds_with(): void
+    public function test_store_creates_user(): void
     {
-        $first_name = fake()->firstName();
-        $last_name = fake()->lastName();
-        $email = fake()->safeEmail();
-        $password = fake()->password();
-
-        $response = $this->post(route('users.store'), [
-            'first_name' => $first_name,
-            'last_name' => $last_name,
-            'email' => $email,
-            'password' => $password,
-        ]);
-
-        $users = User::query()
-            ->where('first_name', $first_name)
-            ->where('last_name', $last_name)
-            ->where('email', $email)
-            ->where('password', $password)
-            ->get();
-        $this->assertCount(1, $users);
-        $user = $users->first();
-
-        $response->assertOk();
-        $response->assertJson($user);
+        $headers = $this->authHeaders();
+        $payload = [
+            'first_name' => 'Alice',
+            'last_name' => 'Admin',
+            'email' => 'alice@example.com',
+            'password' => 'secret123',
+        ];
+        $res = $this->postJson('/api/users', $payload, $headers);
+        $res->assertStatus(Http::HTTP_CREATED)
+            ->assertJsonPath('email', 'alice@example.com');
+        $this->assertDatabaseHas('users', ['email' => 'alice@example.com']);
     }
 
-
-    #[Test]
-    public function update_uses_form_request_validation(): void
+    public function test_update_modifies_user(): void
     {
-        $this->assertActionUsesFormRequest(
-            \App\Http\Controllers\Api\UserController::class,
-            'update',
-            \App\Http\Requests\Api\UserUpdateRequest::class
-        );
+        $headers = $this->authHeaders();
+        $user = User::factory()->create(['first_name' => 'Old']);
+        $res = $this->putJson('/api/users/'.$user->id, [
+            'first_name' => 'NewName',
+            'last_name' => $user->last_name,
+            'email' => $user->email,
+        ], $headers);
+        $res->assertOk()->assertJsonPath('first_name', 'NewName');
+        $this->assertDatabaseHas('users', ['id' => $user->id, 'first_name' => 'NewName']);
     }
 
-    #[Test]
-    public function update_responds_with(): void
+    public function test_destroy_soft_deletes_user(): void
     {
+        $headers = $this->authHeaders();
         $user = User::factory()->create();
-        $first_name = fake()->firstName();
-        $last_name = fake()->lastName();
-        $email = fake()->safeEmail();
-        $phone = fake()->phoneNumber();
-
-        $response = $this->put(route('users.update', $user), [
-            'first_name' => $first_name,
-            'last_name' => $last_name,
-            'email' => $email,
-            'phone' => $phone,
-        ]);
-
-        $user->refresh();
-
-        $response->assertOk();
-        $response->assertJson($user);
-
-        $this->assertEquals($first_name, $user->first_name);
-        $this->assertEquals($last_name, $user->last_name);
-        $this->assertEquals($email, $user->email);
-        $this->assertEquals($phone, $user->phone);
-    }
-
-
-    #[Test]
-    public function destroy_deletes_and_responds_with(): void
-    {
-        $user = User::factory()->create();
-
-        $response = $this->delete(route('users.destroy', $user));
-
-        $response->assertNoContent();
-
-        $this->assertSoftDeleted($user);
+        $this->deleteJson('/api/users/'.$user->id, [], $headers)
+            ->assertStatus(Http::HTTP_NO_CONTENT);
+        $this->assertSoftDeleted('users', ['id' => $user->id]);
     }
 }
