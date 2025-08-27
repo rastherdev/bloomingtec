@@ -54,6 +54,25 @@ class TaskControllerTest extends TestCase
             ->assertStatus(Http::HTTP_FORBIDDEN);
     }
 
+    public function test_show_not_found_returns_404(): void
+    {
+        $user = User::factory()->create();
+        $this->getJson('/api/tasks/999999', $this->authHeaders($user))
+            ->assertStatus(Http::HTTP_NOT_FOUND)
+            ->assertJsonPath('message', 'Task not found');
+    }
+
+    public function test_show_invalid_id_returns_422(): void
+    {
+        $user = User::factory()->create();
+        $this->getJson('/api/tasks/abcXYZ', $this->authHeaders($user))
+            ->assertStatus(Http::HTTP_UNPROCESSABLE_ENTITY)
+            ->assertJsonPath('message', 'Invalid task id');
+        $this->getJson('/api/tasks/%23%24', $this->authHeaders($user)) // encoded #$
+            ->assertStatus(Http::HTTP_UNPROCESSABLE_ENTITY)
+            ->assertJsonPath('message', 'Invalid task id');
+    }
+
     public function test_update_modifies_task(): void
     {
         $user = User::factory()->create();

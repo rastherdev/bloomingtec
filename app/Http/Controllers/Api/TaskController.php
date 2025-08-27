@@ -27,26 +27,65 @@ class TaskController extends Controller
     return response()->json($task, HttpResponse::HTTP_CREATED);
     }
 
-    public function show(Task $task): JsonResponse
+    public function show(string $task): JsonResponse
     {
-        $this->authorizeTask($task);
-        return response()->json($task);
+        if (!ctype_digit($task)) {
+            return response()->json([
+                'message' => 'Invalid task id',
+                'errors' => ['id' => ['The id must be a numeric value.']]
+            ], HttpResponse::HTTP_UNPROCESSABLE_ENTITY);
+        }
+        $id = (int)$task;
+        $model = Task::find($id);
+        if (!$model) {
+            return response()->json(['message' => 'Task not found'], HttpResponse::HTTP_NOT_FOUND);
+        }
+        if ($model->user_id !== Auth::id()) {
+            return response()->json(['message' => 'Forbidden'], HttpResponse::HTTP_FORBIDDEN);
+        }
+        return response()->json($model);
     }
 
-    public function update(TaskUpdateRequest $request, Task $task): JsonResponse
+    public function update(TaskUpdateRequest $request, string $task): JsonResponse
     {
-        $this->authorizeTask($task);
-    $data = $request->validated();
-    unset($data['user_id']); // prevent ownership changes
-    $task->update($data);
-        return response()->json($task);
+        if (!ctype_digit($task)) {
+            return response()->json([
+                'message' => 'Invalid task id',
+                'errors' => ['id' => ['The id must be a numeric value.']]
+            ], HttpResponse::HTTP_UNPROCESSABLE_ENTITY);
+        }
+        $id = (int)$task;
+        $model = Task::find($id);
+        if (!$model) {
+            return response()->json(['message' => 'Task not found'], HttpResponse::HTTP_NOT_FOUND);
+        }
+        if ($model->user_id !== Auth::id()) {
+            return response()->json(['message' => 'Forbidden'], HttpResponse::HTTP_FORBIDDEN);
+        }
+        $data = $request->validated();
+        unset($data['user_id']); // prevent ownership changes
+        $model->update($data);
+        return response()->json($model);
     }
 
-    public function destroy(Task $task): JsonResponse
+    public function destroy(string $task): JsonResponse
     {
-        $this->authorizeTask($task);
-        $task->delete();
-    return response()->json([], HttpResponse::HTTP_NO_CONTENT);
+        if (!ctype_digit($task)) {
+            return response()->json([
+                'message' => 'Invalid task id',
+                'errors' => ['id' => ['The id must be a numeric value.']]
+            ], HttpResponse::HTTP_UNPROCESSABLE_ENTITY);
+        }
+        $id = (int)$task;
+        $model = Task::find($id);
+        if (!$model) {
+            return response()->json(['message' => 'Task not found'], HttpResponse::HTTP_NOT_FOUND);
+        }
+        if ($model->user_id !== Auth::id()) {
+            return response()->json(['message' => 'Forbidden'], HttpResponse::HTTP_FORBIDDEN);
+        }
+        $model->delete();
+        return response()->json([], HttpResponse::HTTP_NO_CONTENT);
     }
 
     protected function authorizeTask(Task $task): void
