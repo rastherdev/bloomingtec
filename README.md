@@ -23,17 +23,53 @@ Este repositorio contiene la solución de una prueba técnica para Backend Devel
 
 Variables clave en `.env` ya configuradas: `DB_CONNECTION`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`. Aún pendiente agregar `JWT_SECRET` cuando se integre JWT.
 
-## Instalación
-Resumen de pasos ejecutados hasta ahora:
 
-1. Clonar el repositorio y copiar `.env.example` a `.env`
-2. Configurar credenciales de base de datos en `.env`.
-3. Definir el `SESSION_DRIVER=file` (API stateless, JWT pendiente).
-4. Definir el modelo y controladores con Blueprint en `draft.yaml` y ejecutar `php artisan blueprint:build`.
-5. Limpiar migraciones por defecto y ejecutar `php artisan migrate:fresh` para crear tablas `users` y `tasks`.
-6. Instalar JWT (`composer require tymon/jwt-auth`) y publicar config (`php artisan vendor:publish --provider="Tymon\\JWTAuth\\Providers\\LaravelServiceProvider"`).
-7. Generar clave JWT: `php artisan jwt:secret` (crea `JWT_SECRET` en `.env`).
-8. Probar endpoints autenticados usando el token devuelto en login/register.
+### 1. Clonar y dependencias
+```bash
+git clone https://github.com/rastherdev/bloomingtec.git
+cd bloomingtec
+composer install
+```
+
+### 2. Archivo de entorno
+```bash
+cp .env.example .env        # Linux / macOS
+# PowerShell (Windows):
+Copy-Item .env.example .env
+```
+
+Generar clave de aplicación si falta:
+```bash
+php artisan key:generate
+```
+
+### 3. Configurar `.env`
+```
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=bloomingtec
+DB_USERNAME=usuario
+DB_PASSWORD=secret
+SESSION_DRIVER=file
+```
+
+### 4. Migraciones limpias
+```bash
+php artisan migrate:fresh
+```
+
+### 5. (Opcional) Regenerar scaffolding con Blueprint
+```bash
+php artisan blueprint:build
+```
+
+### 6. Instalar / configurar JWT
+```bash
+composer require tymon/jwt-auth
+php artisan vendor:publish --provider="Tymon\\JWTAuth\\Providers\\LaravelServiceProvider"
+php artisan jwt:secret
+```
 
 ---
 
