@@ -6,7 +6,7 @@ models:
     password: string:255
     slug: string:160 unique
     phone: string:30 nullable
-    relations:
+    relationships:
       hasMany: Task
     softDeletes
     timestamps
@@ -26,13 +26,29 @@ controllers:
     resource: index, show, store, update, destroy
 
   Api/User:
-    store
-    update
-    destroy
+    store:
+      validate: first_name, last_name, email, password
+      save: user
+      respond: user
+    update:
+      validate: first_name, last_name, email, phone
+      update: user
+      respond: user
+    destroy:
+      delete: user
+      respond: 204
 
   Api/Auth:
-    register
-    login
-    logout
-    me
-    refresh
+    register:
+      validate: first_name, last_name, email, password
+      save: user
+      respond: user
+    login:
+      validate: email, password
+      respond: 200
+    logout:
+      respond: 204
+    me:
+      respond: 200
+    refresh:
+      respond: 200

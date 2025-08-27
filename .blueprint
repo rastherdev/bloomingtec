@@ -1,0 +1,26 @@
+created:
+    - app/Http/Controllers/Api/TaskController.php
+    - app/Http/Controllers/Api/UserController.php
+    - app/Http/Controllers/Api/AuthController.php
+    - database/factories/UserFactory.php
+    - database/factories/TaskFactory.php
+    - database/migrations/2025_08_27_015307_create_users_table.php
+    - database/migrations/2025_08_27_015308_create_tasks_table.php
+    - app/Models/User.php
+    - app/Models/Task.php
+    - tests/Feature/Http/Controllers/Api/TaskControllerTest.php
+    - tests/Feature/Http/Controllers/Api/UserControllerTest.php
+    - tests/Feature/Http/Controllers/Api/AuthControllerTest.php
+    - app/Http/Requests/Api/TaskStoreRequest.php
+    - app/Http/Requests/Api/TaskUpdateRequest.php
+    - app/Http/Requests/Api/UserStoreRequest.php
+    - app/Http/Requests/Api/UserUpdateRequest.php
+    - app/Http/Requests/Api/AuthRegisterRequest.php
+    - app/Http/Requests/Api/AuthLoginRequest.php
+    - resources/views/task/index.blade.php
+    - resources/views/task/show.blade.php
+updated:
+    - routes/web.php
+models:
+    User: { first_name: 'string:100', last_name: 'string:100', email: 'string:150 unique', password: 'string:255', slug: 'string:160 unique', phone: 'string:30 nullable', relationships: { hasMany: Task }, softdeletes: softDeletes, timestamps: timestamps }
+    Task: { user_id: 'id foreign', title: 'string:150', description: 'text nullable', start_date: 'date nullable', end_date: 'date nullable', status: 'enum:incomplete,complete default:incomplete', softdeletes: softDeletes, timestamps: timestamps }

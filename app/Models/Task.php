@@ -4,10 +4,10 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class User extends Model
+class Task extends Model
 {
     use HasFactory, SoftDeletes;
 
@@ -17,21 +17,12 @@ class User extends Model
      * @var array
      */
     protected $fillable = [
-        'first_name',
-        'last_name',
-        'email',
-        'password',
-        'slug',
-        'phone',
-    ];
-
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var array
-     */
-    protected $hidden = [
-        'password',
+        'user_id',
+        'title',
+        'description',
+        'start_date',
+        'end_date',
+        'status',
     ];
 
     /**
@@ -43,11 +34,14 @@ class User extends Model
     {
         return [
             'id' => 'integer',
+            'user_id' => 'integer',
+            'start_date' => 'date',
+            'end_date' => 'date',
         ];
     }
 
-    public function tasks(): HasMany
+    public function user(): BelongsTo
     {
-        return $this->hasMany(Task::class);
+        return $this->belongsTo(User::class);
     }
 }
